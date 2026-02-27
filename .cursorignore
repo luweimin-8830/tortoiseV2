@@ -1,0 +1,9 @@
+# 屏蔽所有编译输出（包括里面的 cloudfunctions）
+unpackage/
+dist/
+
+# 屏蔽依赖包
+node_modules/
+
+# 显式允许读取根目录下的云函数（其实默认就会读，但为了保险）
+!cloudfunctions/
