@@ -1,5 +1,6 @@
 <template>
 	<view class="container">
+		<nav-bar></nav-bar>
 		<!-- 头部占位 (模拟自定义导航栏的高度) -->
 		<view class="nav-placeholder" :style="{ height: topBarHeight + 'px' }">
 			<view class="page-title" :style="{ top: menuButtonInfo.top + 'px', lineHeight: menuButtonInfo.height + 'px' }">添加爱宠</view>
@@ -120,7 +121,12 @@
 </template>
 
 <script>
+	import navBar from '@/components/navBar.vue'
+	import { callApi } from '@/util/util.js'
 	export default {
+		components: {
+			navBar
+		},
 		data() {
 			return {
 				topBarHeight: 44, // 默认值，会被 onLoad 覆盖
@@ -129,18 +135,25 @@
 				
 				focusedField: '', // 当前聚焦的字段
 				
+				uploadProgress: 0, // 上传进度 0-100
+				isUploading: false, // 是否正在上传
+				isEdit: false, // 是否为编辑模式
+				
 				pet: {
+					_id: '',
 					name: '',
 					cover: '',
 					length: '',
 					weight: '',
 					desc: '',
 					sex: 0,
-					birthday: ''
+					birthday: '',
+					classification: '',
+					variety: ''
 				}
 			}
 		},
-		onLoad() {
+		onLoad(options) {
 			// 获取顶部导航栏高度信息，适配不同机型
 			const systemInfo = uni.getSystemInfoSync();
 			// #ifdef MP-WEIXIN
@@ -154,27 +167,314 @@
 			this.topBarHeight = systemInfo.statusBarHeight + 44;
 			this.menuButtonInfo = { top: systemInfo.statusBarHeight + 6, height: 32 };
 			// #endif
-			//test
+			
+			// 处理页面参数
+			if (options.id) {
+				// 编辑模式：传入 ID
+				this.isEdit = true;
+				this.getPetDetail(options.id);
+			} else if (options.item) {
+				// 编辑模式：传入对象字符串 (兼容旧逻辑)
+				this.isEdit = true;
+				try {
+					const item = JSON.parse(decodeURIComponent(options.item));
+					this.initPetData(item);
+				} catch (e) {
+					console.error('解析参数失败', e);
+				}
+			} else if (options.classification) {
+				// 新增模式，接收分类
+				this.pet.classification = options.classification;
+			}
 		},
 		methods: {
+			// 初始化宠物数据
+			initPetData(item) {
+				this.pet = {
+					_id: item._id,
+					name: item.name || '',
+					cover: item.photo || '', // 映射 photo -> cover
+					length: item.length || '',
+					weight: item.weight || '',
+					desc: item.content || '', // 映射 content -> desc
+					sex: Number(item.sex) || 0,
+					birthday: this.formatDate(item.birthday),
+					classification: item.Classification || '',
+					variety: item.variety || ''
+				};
+			},
+			
+			// 格式化日期
+			formatDate(dateStr) {
+				if (!dateStr) return '';
+				if (typeof dateStr === 'string') {
+					if (dateStr.includes('T')) return dateStr.split('T')[0];
+					return dateStr;
+				}
+				// 如果是 Date 对象 (虽然云函数通常返回 JSON 字符串)
+				if (dateStr instanceof Date) {
+					try {
+						const year = dateStr.getFullYear();
+						const month = (dateStr.getMonth() + 1).toString().padStart(2, '0');
+						const day = dateStr.getDate().toString().padStart(2, '0');
+						return `${year}-${month}-${day}`;
+					} catch(e) { return '' }
+				}
+				return '';
+			},
+			
+			// 获取宠物详情
+			async getPetDetail(id) {
+				uni.showLoading({ title: '加载中...' });
+				try {
+					const res = await callApi('getPetDetail', { _id: id });
+					uni.hideLoading();
+					if (res && res.code === 0 && res.data) {
+						this.initPetData(res.data);
+					} else {
+						uni.showToast({ title: res.error || '获取信息失败', icon: 'none' });
+					}
+				} catch (e) {
+					uni.hideLoading();
+					console.error('获取详情异常:', e);
+					uni.showToast({ title: '网络异常', icon: 'none' });
+				}
+			},
+
 			cancel() {
 				uni.navigateBack();
 			},
-			save() {
-				// 暂时只打印数据
-				console.log('保存数据:', this.pet);
-				uni.showToast({
-					title: '样式预览模式',
-					icon: 'none'
+			async save() {
+				if (this.isUploading) {
+					uni.showToast({ title: '图片上传中，请稍后', icon: 'none' });
+					return;
+				}
+				
+				if (!this.pet.name.trim()) {
+					uni.showToast({ title: '请输入爱宠名称', icon: 'none' });
+					return;
+				}
+				
+				uni.showLoading({ title: '保存中...', mask: true });
+				
+				try {
+					const data = {
+						flag: this.isEdit ? 1 : 0, // 1:更新, 0:新增
+						_id: this.pet._id,
+						name: this.pet.name.trim(),
+						photo: this.pet.cover,
+						length: this.pet.length,
+						weight: this.pet.weight,
+						content: this.pet.desc,
+						sex: this.pet.sex,
+						birthday: this.pet.birthday,
+						Classification: this.pet.classification,
+						variety: this.pet.variety
+					};
+					
+					const res = await callApi('savePet', data);
+					uni.hideLoading();
+					
+					if (res && (res.code === 0 || res.id)) {
+						uni.showToast({ title: '保存成功', icon: 'success' });
+						
+						setTimeout(() => {
+							// 尝试刷新上一页
+							const pages = getCurrentPages();
+							if (pages.length > 1) {
+								const prevPage = pages[pages.length - 2];
+								if (prevPage.$vm && prevPage.$vm.refresh) {
+									prevPage.$vm.refresh();
+								} else if (prevPage.refresh) {
+									prevPage.refresh();
+								}
+							}
+							uni.navigateBack();
+						}, 1500);
+					} else {
+						uni.showToast({ title: res.error || '保存失败', icon: 'none' });
+					}
+				} catch (e) {
+					uni.hideLoading();
+					console.error('保存异常:', e);
+					uni.showToast({ title: '网络异常', icon: 'none' });
+				}
+			},
+			/**
+			 * 优化后的图片上传流程
+			 * 1. 选择 -> 裁剪 -> 获取信息 -> 校验大小
+			 * 2. 查重 (秒传)
+			 * 3. 正常上传 (带进度)
+			 * 4. 保存元数据
+			 */
+			async uploadImage() {
+				// #ifdef MP-WEIXIN
+				if (this.isUploading) return;
+				
+				try {
+					// 1. 选择并裁剪图片
+					const tempFilePath = await this.chooseImage();
+					const croppedPath = await this.cropImage(tempFilePath);
+					
+					// 2. 获取文件信息并校验
+					const { hash, size } = await this.getFileInfo(croppedPath);
+					const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+					
+					if (size > MAX_SIZE) {
+						uni.showToast({ title: '图片不能超过2MB', icon: 'none' });
+						return;
+					}
+					
+					this.isUploading = true;
+					this.uploadProgress = 0;
+					
+					// 3. 检查秒传
+					const existsFileID = await this.checkImageExists(hash);
+					if (existsFileID) {
+						this.pet.cover = existsFileID;
+						this.uploadProgress = 100;
+						this.isUploading = false;
+						uni.showToast({ title: '上传成功', icon: 'success' });
+						return;
+					}
+					
+					// 4. 上传到云存储
+					const fileID = await this.uploadToCloud(croppedPath);
+					
+					// 5. 保存图片元数据
+					await this.saveImageMeta(hash, fileID, size);
+					
+					this.pet.cover = fileID;
+					this.uploadProgress = 100;
+					uni.showToast({ title: '上传成功', icon: 'success' });
+					
+				} catch (e) {
+					console.error('上传流程异常:', e);
+					if (e.message !== 'cancel') {
+						uni.showToast({ title: e.message || '上传失败', icon: 'none' });
+					}
+				} finally {
+					setTimeout(() => {
+						this.isUploading = false;
+					}, 500);
+				}
+				// #endif
+				
+				// #ifndef MP-WEIXIN
+				uni.showToast({ title: '请在微信小程序中操作', icon: 'none' });
+				// #endif
+			},
+			
+			// --- 辅助方法 ---
+			
+			// 选择图片
+			chooseImage() {
+				return new Promise((resolve, reject) => {
+					uni.chooseMedia({
+						count: 1,
+						mediaType: ['image'],
+						sourceType: ['album', 'camera'],
+						success: (res) => resolve(res.tempFiles[0].tempFilePath),
+						fail: (err) => {
+							if (err.errMsg && err.errMsg.indexOf('cancel') !== -1) {
+								reject(new Error('cancel'));
+							} else {
+								reject(new Error('选择图片失败'));
+							}
+						}
+					});
 				});
 			},
-			uploadImage() {
-				uni.chooseImage({
-					count: 1,
-					success: (res) => {
-						this.pet.cover = res.tempFilePaths[0];
-					}
+			
+			// 裁剪图片
+			cropImage(src) {
+				return new Promise((resolve, reject) => {
+					wx.cropImage({
+						src: src,
+						cropScale: '1:1',
+						success: (res) => resolve(res.tempFilePath),
+						fail: () => reject(new Error('cancel')) // 裁剪取消视为取消操作
+					});
 				});
+			},
+			
+			// 获取文件信息 (Hash & Size)
+			getFileInfo(filePath) {
+				return new Promise((resolve, reject) => {
+					const fs = wx.getFileSystemManager();
+					fs.getFileInfo({
+						filePath,
+						success: (res) => resolve({ hash: res.digest, size: res.size }),
+						fail: (err) => reject(new Error('读取文件信息失败'))
+					});
+				});
+			},
+			
+			// 检查是否已存在 (秒传)
+			async checkImageExists(hash) {
+				try {
+					const res = await callApi('checkImage', { hash }, { showLoading: false });
+					if (res && res.code === 0 && res.data && res.data.fileID) {
+						return res.data.fileID;
+					}
+				} catch (e) {
+					console.error('秒传检查失败', e);
+					// 检查失败不阻断流程，继续走普通上传
+				}
+				return null;
+			},
+			
+			// 上传到云存储 (带进度)
+			async uploadToCloud(filePath) {
+				// 获取 openid 生成路径
+				let openid = uni.getStorageSync('user_openid') || 'temp_user';
+				// 如果没有缓存openid，尝试获取一次 (非阻塞，获取不到用temp)
+				if (openid === 'temp_user') {
+					try {
+						const userRes = await callApi('getUserInfo', {}, { showLoading: false });
+						if (userRes && userRes.OPENID) {
+							openid = userRes.OPENID;
+							uni.setStorageSync('user_openid', openid);
+						}
+					} catch(e) {}
+				}
+				
+				const ext = filePath.split('.').pop() || 'jpg';
+				const timestamp = Math.floor(Date.now() / 1000);
+				const randomStr = Math.floor(Math.random() * 9000 + 1000).toString();
+				const cloudPath = `${openid}/${timestamp}${randomStr}.${ext}`;
+				
+				return new Promise((resolve, reject) => {
+					const uploadTask = wx.cloud.uploadFile({
+						cloudPath,
+						filePath,
+						success: (res) => {
+							if (res.fileID) resolve(res.fileID);
+							else reject(new Error('上传未返回fileID'));
+						},
+						fail: (err) => reject(new Error('云存储上传失败: ' + err.errMsg))
+					});
+					
+					// 监听进度
+					uploadTask.onProgressUpdate((res) => {
+						this.uploadProgress = res.progress;
+					});
+				});
+			},
+			
+			// 保存图片元数据
+			async saveImageMeta(hash, fileID, size) {
+				try {
+					await callApi('saveImage', {
+						hash,
+						fileID,
+						name: fileID, // 也可以存 cloudPath
+						size
+					}, { showLoading: false });
+				} catch (e) {
+					console.error('保存图片信息失败', e);
+					// 元数据保存失败不影响图片使用，仅打印日志
+				}
 			}
 		}
 	}
@@ -280,6 +580,28 @@
 	
 	.placeholder-img {
 		opacity: 0.5;
+	}
+	
+	.upload-mask {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: rgba(0, 0, 0, 0.4);
+		border-radius: 50rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 10;
+		backdrop-filter: blur(2px);
+	}
+	
+	.progress-text {
+		color: #fff;
+		font-size: 28rpx;
+		font-weight: bold;
+		text-shadow: 0 2rpx 4rpx rgba(0,0,0,0.3);
 	}
 
 	.camera-badge {

@@ -15,6 +15,14 @@
 			"enablePullDownRefresh": false,
 			"disableScroll": true
 		}
+	}, {
+		"path": "pages/petDetail/petDetail",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom",
+			"enablePullDownRefresh": false,
+			"disableScroll": true
+		}
 	}],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",

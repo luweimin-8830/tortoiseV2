@@ -160,8 +160,9 @@
 			},
 			
 			gotoDetail(item) {
-				// TODO: 跳转到宠物详情页
-				console.log('点击了宠物:', item);
+				uni.navigateTo({
+					url: `/pages/petDetail/petDetail?id=${item._id}`
+				})
 			},
 			
 			selectTag(index, item) {

@@ -36,3 +36,10 @@
 
 ## 记忆与规则
 - **文件读取限制**：从现在开始，只读取用户明确 @ 的页面，其他页面一律不读取。
+
+## 开发规范 (Best Practices)
+- **云函数 Event 获取**：
+  由于 `tcb-router` 或云函数环境的差异，`ctx` 可能被包裹了一层。为了兼容性，所有控制器中获取 `event` 参数统一使用以下写法：
+  ```javascript
+  const event = (ctx._req && ctx._req.event) ? ctx._req.event : (ctx.event || ctx);
+  ```
