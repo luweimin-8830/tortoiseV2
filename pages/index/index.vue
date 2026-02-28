@@ -2,12 +2,14 @@
 	<view class="page-container">
 		<!-- 页面内容区域 -->
 		<view class="content">
-			<view v-if="currentTab === 0" class="full-height">
+			<view v-show="currentTab === 0" class="full-height">
 				<home></home>
 			</view>
-			<view v-if="currentTab === 1" class="padded-content">记录内容</view>
-			<view v-if="currentTab === 3" class="padded-content">日历内容</view>
-			<view v-if="currentTab === 4" class="padded-content">我的内容</view>
+			<view v-show="currentTab === 1" class="padded-content">记录内容</view>
+			<view v-show="currentTab === 3" class="padded-content">日历内容</view>
+			<view v-show="currentTab === 4" class="full-height">
+				<my></my>
+			</view>
 		</view>
 
 		<!-- 自定义底部 TabBar -->
@@ -50,10 +52,12 @@
 
 <script>
 	import home from '@/components/home.vue'
+	import my from '@/components/my.vue'
 
 	export default {
 		components: {
-			home
+			home,
+			my
 		},
 		data() {
 			return {

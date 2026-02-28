@@ -108,11 +108,16 @@
 			this.topBarHeight = this.statusBarHeight + 44;
 			// #endif
 			
-			this.getClassList().then(() => {
-				this.getPetList();
-			});
+			Promise.all([
+				this.getClassList(),
+				this.getPetList()
+			]);
 		},
 		methods: {
+			// 供外部调用刷新
+			refresh() {
+				this.getPetList();
+			},
 			search(res) {
 				console.log('搜索:', res.value);
 			},

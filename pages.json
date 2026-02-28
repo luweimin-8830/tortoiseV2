@@ -23,7 +23,38 @@
 			"enablePullDownRefresh": false,
 			"disableScroll": true
 		}
+	},{
+		"path": "pages/my/my",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom",
+			"enablePullDownRefresh": false,
+			"disableScroll": true
+		}
+	}, {
+		"path": "pages/tagEdit/tagEdit",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom",
+			"enablePullDownRefresh": false,
+			"disableScroll": true
+		}
 	}],
+	"tabBar": {
+		"custom": true,
+		"display": "none",
+		"color": "white",
+		"selectedColor": "black",
+		"backgroundColor": "#1F2125",
+		"list": [
+			{
+				"pagePath": "pages/index/index"
+			},
+			{
+				"pagePath": "pages/my/my"
+			}
+		]
+	},
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "uni-app",
