@@ -550,10 +550,11 @@
 
 	.container {
 		font-size: 1rem;
-		min-height: 100vh;
+		height: 100vh; /* 改为固定高度，确保 flex: 1 的 scroll-view 能正常工作 */
 		background-color: #DBE9B2; /* 保持全局背景色 */
 		display: flex;
 		flex-direction: column;
+		overflow: hidden; /* 禁止外层滚动 */
 	}
 
 	.nav-placeholder {
@@ -778,7 +779,8 @@
 	.textarea-box {
 		border-radius: 30rpx;
 		padding: 20rpx 30rpx;
-		min-height: 200rpx;
+		min-height: 240rpx; /* 稍微增加最小高度 */
+		margin-bottom: 20rpx;
 	}
 
 	.bottom-safe-area {

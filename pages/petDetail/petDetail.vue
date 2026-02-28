@@ -282,7 +282,9 @@ export default {
             }
         },
         goAddLog() {
-            uni.showToast({ title: '添加日志功能开发中', icon: 'none' });
+            uni.navigateTo({
+                url: `/pages/logEdit/logEdit?petId=${this.petId}`
+            });
         },
         goEditLog(log) {
             if (this.isManageMode) return;

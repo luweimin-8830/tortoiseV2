@@ -39,6 +39,14 @@
 			"enablePullDownRefresh": false,
 			"disableScroll": true
 		}
+	}, {
+		"path": "pages/logEdit/logEdit",
+		"style": {
+			"navigationBarTitleText": "",
+			"navigationStyle": "custom",
+			"enablePullDownRefresh": false,
+			"disableScroll": true
+		}
 	}],
 	"tabBar": {
 		"custom": true,
