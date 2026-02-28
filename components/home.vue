@@ -128,7 +128,12 @@
 				this.getPetList();
 			},
 			search(res) {
-				console.log('搜索:', res.value);
+				this.searchKeyword = res.value || '';
+				this.getPetList();
+			},
+			clearSearch() {
+				this.searchKeyword = '';
+				this.getPetList();
 			},
 			
 			// 获取分类列表

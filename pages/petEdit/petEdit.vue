@@ -18,7 +18,7 @@
 			</view>
 		</view>
 
-		<scroll-view scroll-y class="content-scroll">
+		<scroll-view scroll-y class="content-scroll" :enhanced="true" :show-scrollbar="false">
 			<!-- 图片上传 -->
 			<view class="upload-section">
 				<view class="avatar-wrapper" @click="uploadImage">
@@ -132,8 +132,8 @@
 				</view>
 			</view>
 			
-			<!-- 底部占位，防止内容被遮挡 -->
-			<view style="height: 50px;"></view>
+			<!-- 底部占位，确保滚动幅度充足并适配安全区域 -->
+			<view class="bottom-safe-area"></view>
 		</scroll-view>
 	</view>
 </template>
@@ -614,6 +614,7 @@
 	.content-scroll {
 		flex: 1;
 		width: 100%;
+		height: 0; /* 强制 flex 子元素在内容溢出时触发滚动 */
 	}
 
 	.upload-section {
@@ -778,6 +779,11 @@
 		border-radius: 30rpx;
 		padding: 20rpx 30rpx;
 		min-height: 200rpx;
+	}
+
+	.bottom-safe-area {
+		height: calc(160rpx + env(safe-area-inset-bottom));
+		width: 100%;
 	}
 
 	/* 标签选择样式 */
