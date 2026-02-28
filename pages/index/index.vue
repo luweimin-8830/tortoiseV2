@@ -64,6 +64,12 @@
 				currentTab: 0
 			}
 		},
+		onShow() {
+			// 每次回到首页，都尝试调用 home 组件的刷新
+			if (this.$refs.homeRef) {
+				this.$refs.homeRef.refresh();
+			}
+		},
 		methods: {
 			switchTab(index) {
 				this.currentTab = index;

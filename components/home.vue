@@ -76,6 +76,7 @@
 				
 				// 宠物列表
 				petList: [],
+				searchKeyword: '',
 			};
 		},
 		computed: {
@@ -112,10 +113,18 @@
 				this.getClassList(),
 				this.getPetList()
 			]);
+
+			// 监听全局刷新事件
+			uni.$on('refreshHome', this.refresh);
+		},
+		beforeUnmount() {
+			// 移除监听
+			uni.$off('refreshHome', this.refresh);
 		},
 		methods: {
 			// 供外部调用刷新
 			refresh() {
+				this.getClassList();
 				this.getPetList();
 			},
 			search(res) {
@@ -125,6 +134,7 @@
 			// 获取分类列表
 			async getClassList() {
 				try {
+					const oldTagId = this.tagList[this.currentTagIndex]?._id;
 					const res = await callApi('getClass');
 					if (res && res.data) {
 						// 添加“全部”选项
@@ -133,9 +143,17 @@
 							...res.data
 						];
 						
+						// 刷新后尝试保持之前的选择，如果找不到则回退到“全部”
+						let newIndex = 0;
+						if (oldTagId !== undefined && oldTagId !== 0) {
+							const foundIndex = this.tagList.findIndex(t => t._id === oldTagId);
+							if (foundIndex !== -1) newIndex = foundIndex;
+						}
+						this.currentTagIndex = newIndex;
+
 						this.$nextTick(() => {
 							setTimeout(() => {
-								this.updateSliderPosition(0);
+								this.updateSliderPosition(this.currentTagIndex);
 							}, 200);
 						});
 					}
@@ -148,7 +166,9 @@
 			async getPetList() {
 				try {
 					const currentTag = this.tagList[this.currentTagIndex];
-					const params = {};
+					const params = {
+						keyword: this.searchKeyword
+					};
 					
 					// 如果当前选择的不是“全部”，则传递分类标题给后端
 					if (currentTag && currentTag._id !== 0) {

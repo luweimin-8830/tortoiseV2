@@ -15,14 +15,29 @@ module.exports = (app) => {
       const event = (ctx._req && ctx._req.event) ? ctx._req.event : (ctx.event || ctx);
         const { OPENID } = cloud.getWXContext()
         const openId = OPENID
-        const { title } = event
+        const { title, keyword } = event
         if (!openId) {
             ctx.body = { data: [], error: '参数错误' }
             return
         }
 
         const query = { openId, status: 1 }
-        if (title) query.Classification = title
+        
+        // 标签筛选：使用正则匹配，兼容多标签字符串
+        if (title) {
+            query.Classification = db.RegExp({
+                regexp: title,
+                options: 'i',
+            })
+        }
+        
+        // 关键词搜索：匹配名称
+        if (keyword) {
+            query.name = db.RegExp({
+                regexp: keyword,
+                options: 'i',
+            })
+        }
 
         const res = await petCollection.where(query).get()
         const now = Date.now()

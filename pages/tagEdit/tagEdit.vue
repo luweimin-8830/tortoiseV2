@@ -232,6 +232,7 @@ export default {
                     });
                     this.newTagName = '';
                     this.getTagsList();
+                    uni.$emit('refreshHome'); // 触发刷新
                 }
             } catch (error) {
                 uni.hideLoading();
@@ -302,6 +303,7 @@ export default {
                     title: '修改成功',
                     icon: 'success'
                 });
+                uni.$emit('refreshHome'); // 触发刷新
             } catch (error) {
                 uni.hideLoading();
                 item.title = oldTitle; // 回滚

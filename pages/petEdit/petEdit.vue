@@ -101,6 +101,24 @@
 					</view>
 				</view>
 
+				<!-- 5. 标签选择 (多选) -->
+				<view class="section-label">
+					<uni-icons type="tag-filled" size="18" color="#566C44"></uni-icons>
+					<text class="label-text">分类标签 (可多选)</text>
+				</view>
+				<view class="tags-group">
+					<view v-for="tag in allTags" :key="tag._id" 
+						class="tag-badge" 
+						:class="{ 'active': isTagSelected(tag.title) }"
+						@click="toggleTag(tag.title)">
+						<text>{{ tag.title }}</text>
+					</view>
+					<view class="tag-badge manage-btn" @click="goToTagEdit">
+						<uni-icons type="gear-filled" size="14" color="#566C44"></uni-icons>
+						<text style="margin-left: 4px;">管理</text>
+					</view>
+				</view>
+
 				<!-- 4. 备注 -->
 				<view class="section-label">
 					<uni-icons type="compose" size="18" color="#566C44"></uni-icons>
@@ -135,6 +153,7 @@
 				
 				focusedField: '', // 当前聚焦的字段
 				
+				allTags: [], // 所有可选标签
 				uploadProgress: 0, // 上传进度 0-100
 				isUploading: false, // 是否正在上传
 				isEdit: false, // 是否为编辑模式
@@ -148,7 +167,7 @@
 					desc: '',
 					sex: 0,
 					birthday: '',
-					classification: '',
+					classification: [], // 修改为数组
 					variety: ''
 				}
 			}
@@ -184,8 +203,16 @@
 				}
 			} else if (options.classification) {
 				// 新增模式，接收分类
-				this.pet.classification = options.classification;
+				this.pet.classification = [options.classification];
 			}
+
+			// 获取所有标签
+			this.getAllTags();
+			// 监听标签管理页面的刷新
+			uni.$on('refreshHome', this.getAllTags);
+		},
+		onUnload() {
+			uni.$off('refreshHome', this.getAllTags);
 		},
 		methods: {
 			// 初始化宠物数据
@@ -199,7 +226,8 @@
 					desc: item.content || '', // 映射 content -> desc
 					sex: Number(item.sex) || 0,
 					birthday: this.formatDate(item.birthday),
-					classification: item.Classification || '',
+					// 兼容处理：将数据库的字符串转为数组
+					classification: item.Classification ? (Array.isArray(item.Classification) ? item.Classification : item.Classification.split(',').filter(v => v)) : [],
 					variety: item.variety || ''
 				};
 			},
@@ -268,7 +296,7 @@
 						content: this.pet.desc,
 						sex: this.pet.sex,
 						birthday: this.pet.birthday,
-						Classification: this.pet.classification,
+						Classification: Array.isArray(this.pet.classification) ? this.pet.classification.join(',') : this.pet.classification,
 						variety: this.pet.variety
 					};
 					
@@ -289,6 +317,7 @@
 									prevPage.refresh();
 								}
 							}
+							uni.$emit('refreshHome'); // 触发全局刷新
 							uni.navigateBack();
 						}, 1500);
 					} else {
@@ -475,6 +504,40 @@
 					console.error('保存图片信息失败', e);
 					// 元数据保存失败不影响图片使用，仅打印日志
 				}
+			},
+			// --- 标签操作 ---
+			// 切换标签选择
+			toggleTag(title) {
+				if (!Array.isArray(this.pet.classification)) {
+					this.pet.classification = [];
+				}
+				const index = this.pet.classification.indexOf(title);
+				if (index > -1) {
+					this.pet.classification.splice(index, 1);
+				} else {
+					this.pet.classification.push(title);
+				}
+			},
+			// 判断标签是否选中
+			isTagSelected(title) {
+				return this.pet.classification && Array.isArray(this.pet.classification) && this.pet.classification.includes(title);
+			},
+			// 获取所有分类
+			async getAllTags() {
+				try {
+					const res = await callApi('getClass');
+					if (res && res.data) {
+						this.allTags = res.data;
+					}
+				} catch (e) {
+					console.error('获取标签列表失败', e);
+				}
+			},
+			// 跳转到标签管理
+			goToTagEdit() {
+				uni.navigateTo({
+					url: '/pages/tagEdit/tagEdit'
+				});
 			}
 		}
 	}
@@ -715,6 +778,46 @@
 		border-radius: 30rpx;
 		padding: 20rpx 30rpx;
 		min-height: 200rpx;
+	}
+
+	/* 标签选择样式 */
+	.tags-group {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 16rpx;
+		margin-bottom: 30rpx;
+		margin-top: 10rpx;
+	}
+
+	.tag-badge {
+		padding: 12rpx 28rpx;
+		background-color: rgba(255, 255, 255, 0.55);
+		border-radius: 40rpx;
+		font-size: 26rpx;
+		color: #566C44;
+		border: 2rpx solid transparent;
+		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+		display: flex;
+		align-items: center;
+
+		&.active {
+			background-color: #6CC42C;
+			color: #fff;
+			border-color: rgba(255, 255, 255, 0.2);
+			font-weight: bold;
+			box-shadow: 0 4rpx 10rpx rgba(108, 196, 44, 0.3);
+		}
+
+		&:active {
+			opacity: 0.8;
+			transform: scale(0.95);
+		}
+	}
+
+	.manage-btn {
+		background-color: rgba(255, 255, 255, 0.3);
+		border: 2rpx dashed rgba(86, 108, 68, 0.3);
+		color: #566C44;
 	}
 
 	/* 穿透修改 uni-easyinput */
